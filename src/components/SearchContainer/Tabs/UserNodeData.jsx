@@ -20,7 +20,9 @@ export default class UserNodeData extends Component {
 			firstDegreeLocalAdmin: -1,
 			groupDelegatedLocalAdmin: -1,
 			derivativeLocalAdmin: -1,
-			sessions: -1
+			sessions: -1,
+			ownedInWave: "None",
+			ownedMethod: "None"
 		}
 
 		emitter.on('userNodeClicked', this.getNodeData.bind(this));
@@ -38,7 +40,9 @@ export default class UserNodeData extends Component {
 			firstDegreeLocalAdmin: -1,
 			groupDelegatedLocalAdmin: -1,
 			derivativeLocalAdmin: -1,
-			sessions: -1
+			sessions: -1,
+			ownedInWave: "None",
+			ownedMethod: "None"
 		})
 
 		var domain = '@' + payload.split('@').last()
@@ -50,6 +54,8 @@ export default class UserNodeData extends Component {
 		var s5 = driver.session()
 		var s6 = driver.session()
 		var s7 = driver.session()
+		var s8 = driver.session()
+		var s9 = driver.session()
 
 		s1.run("MATCH (n:Group) WHERE NOT n.name ENDS WITH {domain} WITH n MATCH (m:User {name:{name}}) MATCH (m)-[r:MemberOf*1..]->(n) RETURN count(n)", {name:payload, domain: domain})
 			.then(function(result){
@@ -91,6 +97,22 @@ export default class UserNodeData extends Component {
 			.then(function(result){
 				this.setState({'sessions':result.records[0]._fields[0].low})
 				s7.close()
+			}.bind(this))
+
+		s8.run("MATCH (n {name:{name}}) RETURN n.wave", {name:payload})
+			.then(function(result){
+				if (result.records[0]._fields[0] != null) {
+					this.setState({'ownedInWave':result.records[0]._fields[0].low})
+				} 
+				s8.close()
+			}.bind(this))
+
+		s9.run("MATCH (n {name:{name}}) RETURN n.owned", {name:payload})
+			.then(function(result){
+				if (result.records[0]._fields[0] != null) {
+					this.setState({'ownedMethod':result.records[0]._fields[0]})
+				} 
+				s9.close()
 			}.bind(this))
 	}
 
@@ -211,6 +233,25 @@ export default class UserNodeData extends Component {
 									,this.state.label)
 							}.bind(this)} />
 					</dd>
+					<br />
+                                        <dt>
+                                                Owned in Wave
+                                        </dt>
+                                        <dd>
+						<NodeALink
+							ready={this.state.ownedInWave !== -1}
+							value={this.state.ownedInWave}
+							click={function(){
+								emitter.emit('query', "OPTIONAL MATCH (n1:User {wave:{wave}}) WITH collect(distinct n1) as c1 OPTIONAL MATCH (n2:Computer {wave:{wave}}) WITH collect(distinct n2) + c1 as c2 OPTIONAL MATCH (n3:Group {wave:{wave}}) WITH c2, collect(distinct n3) + c2 as c3 UNWIND c2 as n UNWIND c3 as m MATCH (n)-[r]->(m) RETURN n,r,m", {wave:this.state.ownedInWave}
+									,this.state.label)
+							}.bind(this)} />
+                                        </dd>
+                                        <dt>
+                                                Owned via Method
+                                        </dt>
+                                        <dd>
+                                                {this.state.ownedMethod}
+                                        </dd>
 				</dl>
 			</div>
 		);

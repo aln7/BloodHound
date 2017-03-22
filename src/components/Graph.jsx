@@ -459,6 +459,23 @@ export default class GraphContainer extends Component {
         var id = data.identity.low
         var type = data.labels[0]
         var label = data.properties.name
+	var statement = params.statement
+	var wave = null
+	var owned = null
+	var propswave = data.properties.wave
+	var propsowned = data.properties.owned
+	var propsresult = params.props.result
+        switch (statement) {
+	    case 'MATCH (n)-[r]->(m) WHERE n.wave<=toInt({result}) RETURN n,r,m':
+                if (propswave == propsresult) wave = propsresult
+                break;
+            case 'MATCH (n),(m:Group {name:{result}}),p=shortestPath((n)-[*1..]->(m)) WHERE exists(n.owned) RETURN p':
+                if (propsowned !== undefined) owned = true
+                break;
+            case 'MATCH (n:Group) WHERE n.name =~ {name} WITH n MATCH p=(n)<-[r:MemberOf*1..]-(m) WHERE exists(m.owned) RETURN nodes(p),relationships(p)':
+                if (propsowned !== undefined) owned = true
+                break;
+	}
         var node = {
             id: id,
             type: type,
@@ -470,6 +487,16 @@ export default class GraphContainer extends Component {
             },
             x: Math.random(),
             y: Math.random()
+        }
+
+        if ((wave !== null) || (owned !== null)){
+            node.glyphs.push({
+                'position': 'top-left',
+                'font': 'FontAwesome',
+                'content': '\uF0E7',
+                'fillColor': '#C900FF',
+                'fontScale': 1.5
+            })
         }
 
         if (label === params.start){

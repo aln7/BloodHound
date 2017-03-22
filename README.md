@@ -1,3 +1,10 @@
+#BloodHound Extensions
+The changes in this fork are a product of the ideas here: http://porterhau5.com/blog/extending-bloodhound-track-and-visualize-your-compromise/
+
+This modified version of BloodHound is intended to be used with the Custom Queries and `bh-owned.rb` script found here: https://github.com/porterhau5/BloodHound-Owned
+
+The Pre-Compiled Binaries have not been updated. Using this app will require building from source. See the Quickstart guide here for more details: https://github.com/porterhau5/BloodHound-Owned#quickstart
+
 #Downloading BloodHound Binaries
 Pre-Compiled BloodHound binaries can be found [here](https://github.com/adaptivethreat/BloodHound/releases). 
 

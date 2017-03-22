@@ -17,7 +17,8 @@ export default class GroupNodeData extends Component {
 			derivativeAdminTo: -1,
 			unrolledMemberOf: -1,
 			sessions: -1,
-			foreignGroupMembership: -1
+			foreignGroupMembership: -1,
+			ownedInWave: "None"
 		}
 
 		emitter.on('groupNodeClicked', this.getNodeData.bind(this));
@@ -32,7 +33,8 @@ export default class GroupNodeData extends Component {
 			derivativeAdminTo: -1,
 			unrolledMemberOf: -1,
 			sessions: -1,
-			foreignGroupMembership: -1
+			foreignGroupMembership: -1,
+			ownedInWave: "None"
 		})
 
 		var domain = '@' + payload.split('@').last()
@@ -43,6 +45,7 @@ export default class GroupNodeData extends Component {
 		var s5 = driver.session()
 		var s6 = driver.session()
 		var s7 = driver.session()
+		var s8 = driver.session()
 
 		s1.run("MATCH (a)-[b:MemberOf]->(c:Group {name:{name}}) RETURN count(a)", {name:payload})
 			.then(function(result){
@@ -84,6 +87,16 @@ export default class GroupNodeData extends Component {
 			.then(function(result){
 				this.setState({'foreignGroupMembership':result.records[0]._fields[0].low})
 				s7.close()
+			}.bind(this))
+
+		s8.run("MATCH (n {name:{name}}) RETURN n.wave", {name:payload})
+			.then(function(result){
+				if (result.records[0]._fields[0] != null) {
+					this.setState({'ownedInWave':result.records[0]._fields[0].low})
+				} else {
+					this.setState({'ownedInWave':'None'})
+				}
+				s8.close()
 			}.bind(this))
 	}
 
@@ -181,6 +194,19 @@ export default class GroupNodeData extends Component {
 							click={function(){
 								emitter.emit('query', "MATCH p=shortestPath((m:User)-[r:MemberOf*1..]->(n:Group {name: {name}})) WITH m,p MATCH q=((m)<-[:HasSession]-(o:Computer)) RETURN q,p", {name: this.state.label},
 									"",this.state.label)
+							}.bind(this)} />
+					</dd>
+					<br />
+					<dt>
+						Owned in Wave
+					</dt>
+					<dd>
+						<NodeALink
+							ready={this.state.ownedInWave !== -1}
+							value={this.state.ownedInWave}
+							click={function(){
+								emitter.emit('query', "OPTIONAL MATCH (n1:User {wave:{wave}}) WITH collect(distinct n1) as c1 OPTIONAL MATCH (n2:Computer {wave:{wave}}) WITH collect(distinct n2) + c1 as c2 OPTIONAL MATCH (n3:Group {wave:{wave}}) WITH c2, collect(distinct n3) + c2 as c3 UNWIND c2 as n UNWIND c3 as m MATCH (n)-[r]->(m) RETURN n,r,m", {wave:this.state.ownedInWave}
+									,this.state.label)
 							}.bind(this)} />
 					</dd>
 				</dl>

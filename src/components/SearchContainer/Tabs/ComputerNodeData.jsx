@@ -20,7 +20,9 @@ export default class ComputerNodeData extends Component {
 			firstDegreeLocalAdmin: -1,
 			groupDelegatedLocalAdmin: -1,
 			derivativeLocalAdmin: -1,
-			sessions: -1
+			sessions: -1,
+                        ownedInWave: "None",
+			ownedMethod: "None"
 		}
 
 		emitter.on('computerNodeClicked', this.getNodeData.bind(this));
@@ -38,7 +40,9 @@ export default class ComputerNodeData extends Component {
 			sessions: -1,
 			firstDegreeLocalAdmin: -1,
 			groupDelegatedLocalAdmin: -1,
-			derivativeLocalAdmin: -1
+			derivativeLocalAdmin: -1,
+                        ownedInWave: "None",
+			ownedMethod: "None"
 		})
 
 		var s1 = driver.session()
@@ -49,6 +53,8 @@ export default class ComputerNodeData extends Component {
 		var s6 = driver.session()
 		var s7 = driver.session()
 		var s8 = driver.session()
+		var s9 = driver.session()
+		var s10 = driver.session()
 
 		s1.run("MATCH (a)-[b:AdminTo]->(c:Computer {name:{name}}) RETURN count(a)", {name:payload})
 			.then(function(result){
@@ -96,6 +102,22 @@ export default class ComputerNodeData extends Component {
 			.then(function(result){
 				this.setState({'sessions':result.records[0]._fields[0].low})
 				s8.close()
+			}.bind(this))
+
+                s9.run("MATCH (n {name:{name}}) RETURN n.wave", {name:payload})
+                        .then(function(result){
+                                if (result.records[0]._fields[0] != null) {
+                                        this.setState({'ownedInWave':result.records[0]._fields[0].low})
+                                }
+                                s9.close()
+                        }.bind(this))
+
+		s10.run("MATCH (n {name:{name}}) RETURN n.owned", {name:payload})
+			.then(function(result){
+				if (result.records[0]._fields[0] != null) {
+					this.setState({'ownedMethod':result.records[0]._fields[0]})
+				} 
+				s10.close()
 			}.bind(this))
 	}
 
@@ -222,6 +244,25 @@ export default class ComputerNodeData extends Component {
 								emitter.emit('query',
 									"MATCH (m:Computer {name:{name}})-[r:HasSession]->(n:User) WITH n,r,m WHERE NOT n.name ENDS WITH '$' RETURN n,r,m", {name: this.state.label})
 							}.bind(this)} />
+					</dd>
+					<br />
+					<dt>
+						Owned in Wave
+					</dt>
+					<dd>
+						<NodeALink
+							ready={this.state.ownedInWave !== -1}
+							value={this.state.ownedInWave}
+							click={function(){
+								emitter.emit('query', "OPTIONAL MATCH (n1:User {wave:{wave}}) WITH collect(distinct n1) as c1 OPTIONAL MATCH (n2:Computer {wave:{wave}}) WITH collect(distinct n2) + c1 as c2 OPTIONAL MATCH (n3:Group {wave:{wave}}) WITH c2, collect(distinct n3) + c2 as c3 UNWIND c2 as n UNWIND c3 as m MATCH (n)-[r]->(m) RETURN n,r,m", {wave:this.state.ownedInWave}
+									,this.state.label)
+							}.bind(this)} />
+					</dd>
+					<dt>
+						Owned via Method
+					</dt>
+					<dd>
+						{this.state.ownedMethod}
 					</dd>
 				</dl>
 			</div>

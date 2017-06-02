@@ -805,6 +805,7 @@ export default class GraphContainer extends Component {
             }, this);
             if (!needsfix){
                 emitter.emit('updateLoadingText', 'Done!');
+                sigma.canvas.edges.autoCurve(sigmaInstance)
                 setTimeout(function(){
                     emitter.emit('showLoadingIndicator', false);    
                 }, 1500)
@@ -828,8 +829,9 @@ export default class GraphContainer extends Component {
 
         noverlapListener.bind('stop', function(event) {
             emitter.emit('updateLoadingText', 'Done!');
+            sigma.canvas.edges.autoCurve(sigmaInstance)
             setTimeout(function(){
-                emitter.emit('showLoadingIndicator', false);    
+                emitter.emit('showLoadingIndicator', false);
             }, 1500)
             
         });

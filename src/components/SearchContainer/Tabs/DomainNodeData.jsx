@@ -1,12 +1,9 @@
 import React, { Component } from 'react';
 import NodeALink from './NodeALink.jsx'
 import LoadLabel from './LoadLabel.jsx'
+import PropTypes from 'prop-types'
 
 export default class DomainNodeData extends Component {
-	propTypes: {
-		visible : React.PropTypes.bool.isRequired
-	}
-
 	constructor(){
 		super();
 
@@ -20,13 +17,17 @@ export default class DomainNodeData extends Component {
 			firstDegreeOutboundTrusts: -1,
 			effectiveOutboundTrusts: -1,
 			firstDegreeInboundTrusts: -1,
-			effectiveInboundTrusts: -1
+			effectiveInboundTrusts: -1,
+			driversessions: []
 		}
 
 		emitter.on('domainNodeClicked', this.getNodeData.bind(this));
 	}
 
 	getNodeData(payload){
+		$.each(this.state.driversessions, function(index, record){
+			record.close();
+		})
 		this.setState({
 			label: payload,
 			users: -1,
@@ -103,6 +104,8 @@ export default class DomainNodeData extends Component {
 				this.setState({'effectiveOutboundTrusts':result.records[0]._fields[0].low})
 				s9.close()
 			}.bind(this))
+		
+		this.setState({'driversessions': [s1,s2,s3,s4,s5,s6,s7,s8,s9]})
 	}
 
 	render() {
@@ -223,4 +226,8 @@ export default class DomainNodeData extends Component {
 			</div>
 		);
 	}
+}
+
+DomainNodeData.propTypes = {
+	visible : React.PropTypes.bool.isRequired
 }

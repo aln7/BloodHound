@@ -30,6 +30,7 @@ body {
     font-family: 'Roboto', sans-serif;
     height: 100%;
     background-color: lightgray;
+    overflow: hidden;
 }
 
 .customQueryGlyph{
@@ -181,6 +182,10 @@ div.tooltip-inner-custom {
 
 .dl-horizontal-fix {
     margin-bottom: 1em;
+}
+
+.dl-horizontal{
+    margin-right: 10px;
 }
 
 .dl-horizontal dt {
@@ -597,7 +602,6 @@ div.tooltip-inner-custom {
 
 .sliderfix .slideinline {
     display: inline-block;
-    float: left;
 }
 
 .sliderfix .slideinline > .track {
@@ -696,10 +700,6 @@ div.tooltip-inner-custom {
     overflow: visible;
 }
 
-.menudiv > div {
-
-}
-
 .menudiv > div > button{
     overflow: hidden;
     white-space: nowrap;
@@ -757,4 +757,10 @@ div.tooltip-inner-custom {
 .tab-content > div:last-child > div{
     max-height: 200px;
     overflow-y: auto;
+}
+
+.tab-content > div:nth-last-child(2) > div{
+    height: 600px;
+    overflow-y: auto;
+    resize: vertical;
 }

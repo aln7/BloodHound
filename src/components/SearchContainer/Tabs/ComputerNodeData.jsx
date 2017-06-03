@@ -153,7 +153,7 @@ export default class ComputerNodeData extends Component {
                                 if (result.records[0]._fields[0] != null) {
                                         this.setState({'ownedInWave':result.records[0]._fields[0].low})
                                 }
-                                s9.close()
+                                s14.close()
                         }.bind(this))
 
 		s15.run("MATCH (n {name:{name}}) RETURN n.owned", {name:payload})
@@ -161,7 +161,7 @@ export default class ComputerNodeData extends Component {
 				if (result.records[0]._fields[0] != null) {
 					this.setState({'ownedMethod':result.records[0]._fields[0]})
 				} 
-				s10.close()
+				s15.close()
 			}.bind(this))
 
 		this.setState({'driversessions': [s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14,s15]})

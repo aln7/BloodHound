@@ -248,6 +248,8 @@ export default class GraphContainer extends Component {
         emitter.on('resetZoom', this.resetZoom.bind(this))
         emitter.on('zoomIn', this.zoomIn.bind(this))
         emitter.on('zoomOut', this.zoomOut.bind(this))
+        emitter.on('blacklistNode', this.blacklistNode.bind(this))
+        emitter.on('unblacklistNode', this.unblacklistNode.bind(this))
     }
 
     resetZoom(){
@@ -371,48 +373,49 @@ export default class GraphContainer extends Component {
         session.run(params.statement, params.props)
             .subscribe({
                 onNext: function(result){
-                    if (result._fields[0].hasOwnProperty('segments')){
-                        $.each(result._fields, function(index, field){
-                            $.each(field.segments,function(index, segment){
-                                var end = this.createNodeFromRow(segment.end, params)
-                                var start = this.createNodeFromRow(segment.start, params)
-                                var edge = this.createEdgeFromRow(segment.relationship)
+                    $.each(result._fields, function(index, field){
+                        if (field != null){
+                            if (field.hasOwnProperty('segments')){
+                                $.each(field.segments,function(index, segment){
+                                    var end = this.createNodeFromRow(segment.end, params)
+                                    var start = this.createNodeFromRow(segment.start, params)
+                                    var edge = this.createEdgeFromRow(segment.relationship)
 
-                                if (!edges[edge.id]){
-                                    edges[edge.id] = edge
-                                }
+                                    if (!edges[edge.id]){
+                                        edges[edge.id] = edge
+                                    }
 
-                                if (!nodes[end.id]){
-                                    nodes[end.id] = end
-                                }
+                                    if (!nodes[end.id]){
+                                        nodes[end.id] = end
+                                    }
 
-                                if (!nodes[start.id]){
-                                    nodes[start.id] = start
-                                }
-                            }.bind(this))
-                        }.bind(this))
-                        
-                    }else{
-                        $.each(result._fields, function(index, value){
-                            if ($.isArray(value)){
-                                $.each(value, function(index, subval){
-                                    var id = subval.identity.low
-                                    if (subval.end && !edges.id){
-                                        edges[id] = this.createEdgeFromRow(subval)
-                                    }else if (!nodes.id){
-                                        nodes[id] = this.createNodeFromRow(subval, params)
+                                    if (!nodes[start.id]){
+                                        nodes[start.id] = start
                                     }
                                 }.bind(this))
                             }else{
-                                var id = value.identity.low
-                                if (value.end && !edges.id){
-                                    edges[id] = this.createEdgeFromRow(value)
-                                }else if (!nodes.id){
-                                    nodes[id] = this.createNodeFromRow(value, params)
+                                if ($.isArray(field)){
+                                    $.each(field, function(index, value){
+                                        if (value != null){
+                                            var id = value.identity.low
+                                            if (value.end && !edges.id){
+                                                edges[id] = this.createEdgeFromRow(value)
+                                            }else if (!nodes.id){
+                                                nodes[id] = this.createNodeFromRow(value, params)
+                                            }
+                                        }
+                                    }.bind(this))
+                                }else{
+                                    var id = field.identity.low
+                                    if (field.end && !edges.id){
+                                        edges[id] = this.createEdgeFromRow(field)
+                                    }else if (!nodes.id){
+                                        nodes[id] = this.createNodeFromRow(field, params)
+                                    }
                                 }
                             }
-                        }.bind(this))
-                    }
+                        }
+                    }.bind(this))
                 }.bind(this),
                 onError: function(error){
                     console.log(error)
@@ -460,26 +463,34 @@ export default class GraphContainer extends Component {
         var type = data.labels[0]
         var label = data.properties.name
 	var statement = params.statement
+        var blacklist = false
 	var wave = null
 	var owned = null
 	var propswave = data.properties.wave
 	var propsowned = data.properties.owned
 	var propsresult = params.props.result
+
+        if (data.properties.blacklist === true){
+            blacklist = true
+        }
+
         switch (statement) {
-	    case 'MATCH (n)-[r]->(m) WHERE n.wave<=toInt({result}) RETURN n,r,m':
+	    case 'MATCH (n)-[r]->(m) WHERE n.wave<=toInt({result}) AND not(exists(n.blacklist)) AND not(exists(m.blacklist)) AND not(exists(r.blacklist)) RETURN n,r,m':
                 if (propswave == propsresult) wave = propsresult
                 break;
-            case 'MATCH (n),(m:Group {name:{result}}),p=shortestPath((n)-[*1..]->(m)) WHERE exists(n.owned) RETURN p':
+            case 'MATCH (n),(m:Group {name:{result}}),p=shortestPath((n)-[*1..12]->(m)) WHERE exists(n.owned) AND NONE (x IN nodes(p) WHERE exists(x.blacklist)) AND NONE (x in relationships(p) WHERE exists(x.blacklist)) RETURN p':
                 if (propsowned !== undefined) owned = true
                 break;
-            case 'MATCH (n:Group) WHERE n.name =~ {name} WITH n MATCH p=(n)<-[r:MemberOf*1..]-(m) WHERE exists(m.owned) RETURN nodes(p),relationships(p)':
+            case 'MATCH (n:Group) WHERE n.name =~ {name} WITH n MATCH p=(n)<-[r:MemberOf*1..]-(m) WHERE exists(m.owned) AND NONE (x IN nodes(p) WHERE exists(x.blacklist)) AND NONE (x in relationships(p) WHERE exists(x.blacklist)) RETURN nodes(p),relationships(p)':
                 if (propsowned !== undefined) owned = true
                 break;
 	}
+
         var node = {
             id: id,
             type: type,
             label: label,
+            blacklist: blacklist,
             glyphs: [],
             folded: {
                 nodes: [],
@@ -537,6 +548,34 @@ export default class GraphContainer extends Component {
         }
 
         return node
+    }
+
+    blacklistNode(id, name){
+        var session = driver.session()
+        session.run("MATCH (n {name:{name}}) SET n.blacklist = true", {name: name})
+	    .then(function(result){
+	        session.close()
+	    }.bind(this))
+        var sigmaInstance = this.state.sigmaInstance
+        sigmaInstance.graph.nodes(id).blacklist = true
+        sigmaInstance.refresh()
+        this.state.design.deprecate()
+        this.state.design.apply();
+        this.relayout()
+    }
+
+    unblacklistNode(id, name){
+        var session = driver.session()
+        session.run("MATCH (n {name:{name}}) REMOVE n.blacklist", {name: name})
+	    .then(function(result){
+	        session.close()
+	    }.bind(this))
+        var sigmaInstance = this.state.sigmaInstance
+        sigmaInstance.graph.nodes(id).blacklist = false
+        sigmaInstance.refresh()
+        this.state.design.deprecate()
+        this.state.design.apply();
+        this.relayout()
     }
 
     unfoldEdgeNode(id){
@@ -749,6 +788,9 @@ export default class GraphContainer extends Component {
                             } else {
                                 node.collapse = true;
                             }
+                        }
+                        if (node.blacklist != true) {
+                            node.unblacklist = true;
                         }
                         return Mustache.render(template, node);
                     }.bind(this)

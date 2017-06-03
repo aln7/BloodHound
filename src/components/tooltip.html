@@ -50,4 +50,14 @@
           <i class="glyphicon glyphicon-screenshot"> </i> Expand
      </li>
      {{/groupedNode}}
+     {{#unblacklist}}
+     <li onclick="emitter.emit('blacklistNode', {{id}}, '{{label}}'); appStore.currentTooltip.close()">
+          <i class="glyphicon glyphicon-screenshot"> </i> Blacklist
+     </li>
+     {{/unblacklist}}
+     {{#blacklist}}
+    <li onclick="emitter.emit('unblacklistNode', {{id}}, '{{label}}'); appStore.currentTooltip.close()">
+          <i class="glyphicon glyphicon-screenshot"> </i> Remove from Blacklist
+     </li>
+     {{/blacklist}}
 </ul>

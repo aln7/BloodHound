@@ -25,5 +25,6 @@ export default class NodeALink extends Component {
 NodeALink.propTypes = {
 	ready : React.PropTypes.bool.isRequired,
 	click : React.PropTypes.func,
-	value : React.PropTypes.number
+	//value : React.PropTypes.number
+	value : React.PropTypes.oneOfType([PropTypes.number, PropTypes.string])
 }

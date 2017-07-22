@@ -250,6 +250,8 @@ export default class GraphContainer extends Component {
         emitter.on('zoomOut', this.zoomOut.bind(this))
         emitter.on('blacklistNode', this.blacklistNode.bind(this))
         emitter.on('unblacklistNode', this.unblacklistNode.bind(this))
+        emitter.on('ownNode', this.ownNode.bind(this))
+        emitter.on('disownNode', this.disownNode.bind(this))
     }
 
     resetZoom(){
@@ -462,35 +464,35 @@ export default class GraphContainer extends Component {
         var id = data.identity.low
         var type = data.labels[0]
         var label = data.properties.name
-	var statement = params.statement
+	    var statement = params.statement
         var blacklist = false
-	var wave = null
-	var owned = null
-	var propswave = data.properties.wave
-	var propsowned = data.properties.owned
-	var propsresult = params.props.result
+	    var wave = null
+        var owned = false
+        var highlight = false
+	    var propswave = data.properties.wave
+	    var propsowned = data.properties.owned
+	    var propsresult = params.props.result
 
         if (data.properties.blacklist === true){
             blacklist = true
         }
 
-        switch (statement) {
-	    case 'MATCH (n)-[r]->(m) WHERE n.wave<=toInt({result}) AND not(exists(n.blacklist)) AND not(exists(m.blacklist)) AND not(exists(r.blacklist)) RETURN n,r,m':
-                if (propswave == propsresult) wave = propsresult
-                break;
-            case 'MATCH (n),(m:Group {name:{result}}),p=shortestPath((n)-[*1..12]->(m)) WHERE exists(n.owned) AND NONE (x IN nodes(p) WHERE exists(x.blacklist)) AND NONE (x in relationships(p) WHERE exists(x.blacklist)) RETURN p':
-                if (propsowned !== undefined) owned = true
-                break;
-            case 'MATCH (n:Group) WHERE n.name =~ {name} WITH n MATCH p=(n)<-[r:MemberOf*1..]-(m) WHERE exists(m.owned) AND NONE (x IN nodes(p) WHERE exists(x.blacklist)) AND NONE (x in relationships(p) WHERE exists(x.blacklist)) RETURN nodes(p),relationships(p)':
-                if (propsowned !== undefined) owned = true
-                break;
-	}
+        if (propsowned !== undefined){
+            owned = true
+        }
+
+        // Highlight Delta for Wave
+	    if (statement == 'MATCH (n)-[r]->(m) WHERE n.wave<=toInt({result}) AND not(exists(n.blacklist)) AND not(exists(m.blacklist)) AND not(exists(r.blacklist)) RETURN n,r,m'){
+            highlight = true
+            if (propswave == propsresult) wave = propsresult;
+        }
 
         var node = {
             id: id,
             type: type,
             label: label,
             blacklist: blacklist,
+            owned: owned,
             glyphs: [],
             folded: {
                 nodes: [],
@@ -500,7 +502,8 @@ export default class GraphContainer extends Component {
             y: Math.random()
         }
 
-        if ((wave !== null) || (owned !== null)){
+        // Give magenta lightning bolt to owned nodes, unless we're highlighting delta for a wave then just give lightning bolt to new nodes in that wave
+        if (((highlight == true) && (wave !== null)) || ((highlight == false) && (propsowned !== undefined))){
             node.glyphs.push({
                 'position': 'top-left',
                 'font': 'FontAwesome',
@@ -572,6 +575,34 @@ export default class GraphContainer extends Component {
 	    }.bind(this))
         var sigmaInstance = this.state.sigmaInstance
         sigmaInstance.graph.nodes(id).blacklist = false
+        sigmaInstance.refresh()
+        this.state.design.deprecate()
+        this.state.design.apply();
+        this.relayout()
+    }
+
+    ownNode(id, name){
+        var session = driver.session()
+        session.run("MATCH (n {name:{name}}) SET n.owned = 'Not specified' ", {name: name})
+	    .then(function(result){
+	        session.close()
+	    }.bind(this))
+        var sigmaInstance = this.state.sigmaInstance
+        sigmaInstance.graph.nodes(id).owned = true
+        sigmaInstance.refresh()
+        this.state.design.deprecate()
+        this.state.design.apply();
+        this.relayout()
+    }
+
+    disownNode(id, name){
+        var session = driver.session()
+        session.run("MATCH (n {name:{name}}) REMOVE n.owned, n.wave", {name: name})
+	    .then(function(result){
+	        session.close()
+	    }.bind(this))
+        var sigmaInstance = this.state.sigmaInstance
+        sigmaInstance.graph.nodes(id).owned = false
         sigmaInstance.refresh()
         this.state.design.deprecate()
         this.state.design.apply();
@@ -791,6 +822,9 @@ export default class GraphContainer extends Component {
                         }
                         if (node.blacklist != true) {
                             node.unblacklist = true;
+                        }
+                        if (node.owned != true) {
+                            node.disowned = true;
                         }
                         return Mustache.render(template, node);
                     }.bind(this)

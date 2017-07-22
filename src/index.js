@@ -109,6 +109,7 @@ global.appStore = {
             'WriteDACL': 'tapered',
             'WriteOwner': 'tapered',
             'AddMembers': 'tapered',
+            'SharesPasswordWith': 'tapered',
             'TrustedBy': 'curvedArrow'
         }
     },
@@ -130,6 +131,7 @@ global.appStore = {
             'WriteDACL': 'line',
             'WriteOwner': 'line',
             'AddMembers': 'line',
+            'SharesPasswordWith': 'line',
             'TrustedBy': 'curvedArrow'
         }
     },

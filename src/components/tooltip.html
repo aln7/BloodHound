@@ -50,13 +50,23 @@
           <i class="glyphicon glyphicon-screenshot"> </i> Expand
      </li>
      {{/groupedNode}}
+     {{#disowned}}
+     <li onclick="emitter.emit('ownNode', {{id}}, '{{label}}'); appStore.currentTooltip.close()">
+          <i class="glyphicon glyphicon-screenshot"> </i> Mark as Owned
+     </li>
+     {{/disowned}}
+     {{#owned}}
+     <li onclick="emitter.emit('disownNode', {{id}}, '{{label}}'); appStore.currentTooltip.close()">
+          <i class="glyphicon glyphicon-screenshot"> </i> Disown node
+     </li>
+     {{/owned}}
      {{#unblacklist}}
      <li onclick="emitter.emit('blacklistNode', {{id}}, '{{label}}'); appStore.currentTooltip.close()">
           <i class="glyphicon glyphicon-screenshot"> </i> Blacklist
      </li>
      {{/unblacklist}}
      {{#blacklist}}
-    <li onclick="emitter.emit('unblacklistNode', {{id}}, '{{label}}'); appStore.currentTooltip.close()">
+     <li onclick="emitter.emit('unblacklistNode', {{id}}, '{{label}}'); appStore.currentTooltip.close()">
           <i class="glyphicon glyphicon-screenshot"> </i> Remove from Blacklist
      </li>
      {{/blacklist}}

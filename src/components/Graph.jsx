@@ -13,8 +13,6 @@ export default class GraphContainer extends Component {
 
         child = child_process.fork(path.join(__dirname,'src','js','worker.js'), {silent:true});
 
-        child = child_process.fork(path.join(__dirname,'src','js','worker.js'), {silent:true});
-
         this.state = {
             sigmaInstance : null,
             design: null,
@@ -104,10 +102,10 @@ export default class GraphContainer extends Component {
         emitter.on('resetZoom', this.resetZoom.bind(this));
         emitter.on('zoomIn', this.zoomIn.bind(this));
         emitter.on('zoomOut', this.zoomOut.bind(this));
-        emitter.on('blacklistNode', this.blacklistNode.bind(this))
-        emitter.on('unblacklistNode', this.unblacklistNode.bind(this))
-        emitter.on('ownNode', this.ownNode.bind(this))
-        emitter.on('disownNode', this.disownNode.bind(this))
+        emitter.on('blacklistNode', this.blacklistNode.bind(this));
+        emitter.on('unblacklistNode', this.unblacklistNode.bind(this));
+        emitter.on('ownNode', this.ownNode.bind(this));
+        emitter.on('disownNode', this.disownNode.bind(this));
     }
 
     componentDidMount() {
@@ -127,278 +125,6 @@ export default class GraphContainer extends Component {
         }else{
             sigma.layouts.startForceLink();
         }
-        $.ajax({
-            url: 'src/components/tooltip.html',
-            type: 'GET',
-            success: function(response){
-                this.setState({template: response})
-            }.bind(this)
-        })
-
-        child.stdout.on('data', (data) => {
-          console.log(`stdout: ${data}`);
-        });
-
-        child.stderr.on('data', (data) => {
-            console.log(`error: ${data}`);
-        });
-
-        child.on('message', function(m) {
-          this.loadFromChildProcess(m)
-        }.bind(this));
-
-        var s1 = driver.session()
-        var s2 = driver.session()
-        var s3 = driver.session()
-        var s4 = driver.session()
-
-        s1.run("CREATE CONSTRAINT ON (c:User) ASSERT c.name IS UNIQUE")
-            .then(function(){
-                s1.close()
-                 s2.run("CREATE CONSTRAINT ON (c:Computer) ASSERT c.name IS UNIQUE")
-                    .then(function(){
-                        s2.close()
-                        s3.run("CREATE CONSTRAINT ON (c:Group) ASSERT c.name IS UNIQUE")
-                            .then(function(){
-                                s3.close()
-                                s4.run("CREATE CONSTRAINT ON (c:Domain) ASSERT c.name IS UNIQUE")
-                                    .then(function(){
-                                        s4.close()
-                                    })
-                                    .catch(function(){
-                                        s4.close()
-                                    })
-                            })
-                            .catch(function(){
-                                s3.close()
-                            })
-                    })
-                    .catch(function(){
-                        s2.close()
-                    })
-            })
-            .catch(function(){
-                s1.close()
-            })
-
-        emitter.on('doLogout', function(){
-            this.state.sigmaInstance.graph.clear();
-            this.state.sigmaInstance.refresh();
-            sigma.layouts.killForceLink();
-            this.setState({sigmaInstance: null})
-            child.kill();
-        }.bind(this))
-    }
-
-    relayout(){
-        sigma.layouts.stopForceLink()
-        if (appStore.dagre){
-            sigma.layouts.dagre.start(this.state.sigmaInstance);
-        }else{
-            sigma.layouts.startForceLink()
-        }
-    }
-
-    export(payload){
-        if (payload === 'image'){
-            var size = $('#graph').outerWidth()
-            sigma.plugins.image(this.state.sigmaInstance,
-                this.state.sigmaInstance.renderers[0],
-                {
-                    download: true,
-                    size: size,
-                    background: 'lightgray',
-                    clip: true
-              });
-        }else{
-            var json = this.state.sigmaInstance.toJSON({
-                pretty: true,
-            })
-
-            json = JSON.parse(json)
-            json.spotlight = appStore.spotlightData
-
-            dialog.showSaveDialog({
-                defaultPath: 'graph.json'
-            }, function(loc){
-                fs.writeFile(loc, JSON.stringify(json, null, 2))
-            })
-        }
-    }
-
-    loadFromChildProcess(graph){
-        if (graph.nodes.length === 0){
-                emitter.emit('showAlert', "No data returned from query")
-                emitter.emit('updateLoadingText', "Done!")
-                setTimeout(function(){
-                    emitter.emit('showLoadingIndicator', false);
-                }, 1500)
-        }else{
-            if (!this.state.firstDraw){
-                appStore.queryStack.push({
-                    nodes: this.state.sigmaInstance.graph.nodes(),
-                    edges: this.state.sigmaInstance.graph.edges(),
-                    spotlight: appStore.spotlightData,
-                    startNode: appStore.startNode,
-                    endNode: appStore.endNode
-                })
-            }
-            $.each(graph.nodes, function(i, node){
-                if (node.start){
-                    appStore.startNode = node
-                }
-
-                if (node.end){
-                    appStore.endNode = node
-                }
-
-                node.glyphs = $.map(node.glyphs, function(value, index) {
-                    return [value];
-                });
-            })
-
-            this.setState({firstDraw: false})
-            sigma.misc.animation.camera(this.state.sigmaInstance.camera, { x: 0, y: 0, ratio: 1.075 });
-
-            appStore.spotlightData = graph.spotlight;
-            this.state.sigmaInstance.graph.clear();
-            this.state.sigmaInstance.graph.read(graph);
-            this.state.design.deprecate();
-            this.state.sigmaInstance.refresh();
-            this.state.design.apply();
-
-            if (appStore.dagre){
-                sigma.layouts.dagre.start(this.state.sigmaInstance);
-            }else{
-                sigma.layouts.startForceLink()
-            }
-            emitter.emit('spotlightUpdate');
-        }
-    }
-
-    import(payload){
-        fs.readFile(payload, 'utf8', function(err, data){
-            var graph;
-            try{
-                graph = JSON.parse(data);
-            }catch (err){
-                emitter.emit('showAlert', 'Bad JSON File');
-                return
-            }
-
-            if (graph.nodes.length === 0){
-                emitter.emit('showAlert', "No data returned from query")
-            }else{
-                $.each(graph.nodes, function(i, node){
-                    node.glyphs = $.map(node.glyphs, function(value, index) {
-                        return [value];
-                    });
-                })
-                appStore.queryStack.push({
-                    nodes: this.state.sigmaInstance.graph.nodes(),
-                    edges: this.state.sigmaInstance.graph.edges(),
-                    spotlight: appStore.spotlightData,
-                    startNode: appStore.startNode,
-                    endNode: appStore.endNode
-                })
-
-                appStore.spotlightData = graph.spotlight;
-                this.state.sigmaInstance.graph.clear();
-                this.state.sigmaInstance.graph.read(graph);
-                this.state.sigmaInstance.refresh()
-                emitter.emit('spotlightUpdate');
-            }
-
-        }.bind(this))
-    }
-
-    clearGraph(){
-        this.state.sigmaInstance.graph.clear()
-        this.state.sigmaInstance.refresh()
-    }
-
-    setGraphicsMode(){
-        var lowgfx = appStore.performance.lowGraphics
-        var sigmaInstance = this.state.sigmaInstance
-        this.state.design.clear()
-        if (lowgfx){
-            sigmaInstance.settings('defaultEdgeType', 'line');
-            sigmaInstance.settings('defaultEdgeColor', 'black');
-            this.state.design.setPalette(appStore.lowResPalette);
-            this.state.design.setStyles(appStore.lowResStyle);
-        }else{
-            sigmaInstance.settings('defaultEdgeType', 'tapered');
-            sigmaInstance.settings('defaultEdgeColor', '#356');
-            this.state.design.setPalette(appStore.highResPalette);
-            this.state.design.setStyles(appStore.highResStyle);
-        }
-        this.state.design.deprecate()
-        sigmaInstance.refresh()
-        this.state.design.apply()
-    }
-
-    componentWillMount() {
-        emitter.on('searchQuery', this.doSearchQuery.bind(this));
-        emitter.on('pathQuery', this.doPathQuery.bind(this));
-        emitter.on('graphBack', this.goBack.bind(this));
-        emitter.on('query', this.doGenericQuery.bind(this));
-        emitter.on('spotlightClick', this.spotlightClickHandler.bind(this))
-        emitter.on('graphRefresh', this.relayout.bind(this))
-        emitter.on('export', this.export.bind(this))
-        emitter.on('import', this.import.bind(this))
-        emitter.on('clearDB', this.clearGraph.bind(this))
-        emitter.on('changeGraphicsMode', this.setGraphicsMode.bind(this))
-        emitter.on('ungroupNode', this.ungroupNode.bind(this))
-        emitter.on('unfoldNode', this.unfoldEdgeNode.bind(this))
-        emitter.on('collapseNode', this.foldEdgeNode.bind(this))
-        emitter.on('resetZoom', this.resetZoom.bind(this))
-        emitter.on('zoomIn', this.zoomIn.bind(this))
-        emitter.on('zoomOut', this.zoomOut.bind(this))
-        emitter.on('blacklistNode', this.blacklistNode.bind(this))
-        emitter.on('unblacklistNode', this.unblacklistNode.bind(this))
-        emitter.on('ownNode', this.ownNode.bind(this))
-        emitter.on('disownNode', this.disownNode.bind(this))
-    }
-
-    resetZoom(){
-        sigma.misc.animation.camera(
-            this.state.sigmaInstance.camera,
-             { x: 0, y: 0, ratio: 1.075 })
-        ;
-    }
-
-    zoomOut(){
-        var sigmaInstance = this.state.sigmaInstance
-        var cam = sigmaInstance.camera;
-
-        sigma.misc.animation.camera(cam, {
-            ratio: cam.ratio * cam.settings('zoomingRatio')
-        }, {
-            duration: sigmaInstance.settings('animationsTime')
-        });
-    }
-
-    zoomIn(){
-        var sigmaInstance = this.state.sigmaInstance
-        var cam = sigmaInstance.camera;
-
-        sigma.misc.animation.camera(cam,
-        {
-            ratio: cam.ratio / cam.settings('zoomingRatio')
-        },
-        {
-            duration: sigmaInstance.settings('animationsTime')
-        });
-    }
-
-    componentDidMount() {
-        this.initializeSigma();
-
-        this.doQueryNative({
-            statement: 'MATCH (n:Group) WHERE n.name =~ "(?i).*DOMAIN ADMINS.*" WITH n MATCH (n)<-[r:MemberOf*1..]-(m) RETURN n,r,m',
-            allowCollapse: false,
-            props: {}
-        })
     }
 
     export(payload){
@@ -736,29 +462,29 @@ export default class GraphContainer extends Component {
     }
 
     createNodeFromRow(data, params){
-        var id = data.identity.low
-        var type = data.labels[0]
-        var label = data.properties.name
-        var statement = params.statement
-        var blacklist = false
-        var wave = null
-        var owned = false
-        var highlight = false
-        var propswave = data.properties.wave
-        var propsowned = data.properties.owned
-        var propsresult = params.props.result
+        var id = data.identity.low;
+        var type = data.labels[0];
+        var label = data.properties.name;
+        var statement = params.statement;
+        var blacklist = false;
+        var wave = null;
+        var owned = false;
+        var highlight = false;
+        var propswave = data.properties.wave;
+        var propsowned = data.properties.owned;
+        var propsresult = params.props.result;
 
         if (data.properties.blacklist === true){
-            blacklist = true
+            blacklist = true;
         }
 
         if (propsowned !== undefined){
-            owned = true
+            owned = true;
         }
 
         // Highlight Delta for Wave
         if (statement == 'MATCH (n)-[r]->(m) WHERE n.wave<=toInt({result}) AND not(exists(n.blacklist)) AND not(exists(m.blacklist)) AND not(exists(r.blacklist)) RETURN n,r,m'){
-            highlight = true
+            highlight = true;
             if (propswave == propsresult) wave = propsresult;
         }
 
@@ -777,6 +503,17 @@ export default class GraphContainer extends Component {
             x: Math.random(),
             y: Math.random()
         };
+
+        // Give magenta lightning bolt to owned nodes, unless we're highlighting delta for a wave then just give lightning bolt to new nodes in that wave
+        if (((highlight == true) && (wave !== null)) || ((highlight == false) && (propsowned !== undefined))){
+            node.glyphs.push({
+                'position': 'top-left',
+                'font': 'FontAwesome',
+                'content': '\uF0E7',
+                'fillColor': '#C900FF',
+                'fontScale': 1.5
+            })
+        }
 
         if (label === params.start){
             node.start = true;
@@ -819,59 +556,59 @@ export default class GraphContainer extends Component {
     }
 
     blacklistNode(id, name){
-        var session = driver.session()
+        var session = driver.session();
         session.run("MATCH (n {name:{name}}) SET n.blacklist = true", {name: name})
-	    .then(function(result){
-	        session.close()
-	    }.bind(this))
-        var sigmaInstance = this.state.sigmaInstance
-        sigmaInstance.graph.nodes(id).blacklist = true
-        sigmaInstance.refresh()
-        this.state.design.deprecate()
+	      .then(function(result){
+	       session.close();
+        }.bind(this));
+        var sigmaInstance = this.state.sigmaInstance;
+        sigmaInstance.graph.nodes(id).blacklist = true;
+        sigmaInstance.refresh();
+        this.state.design.deprecate();
         this.state.design.apply();
-        this.relayout()
+        this.relayout();
     }
 
     unblacklistNode(id, name){
-        var session = driver.session()
+        var session = driver.session();
         session.run("MATCH (n {name:{name}}) REMOVE n.blacklist", {name: name})
-	    .then(function(result){
-	        session.close()
-	    }.bind(this))
-        var sigmaInstance = this.state.sigmaInstance
-        sigmaInstance.graph.nodes(id).blacklist = false
-        sigmaInstance.refresh()
-        this.state.design.deprecate()
+	      .then(function(result){
+	        session.close();
+	      }.bind(this));
+        var sigmaInstance = this.state.sigmaInstance;
+        sigmaInstance.graph.nodes(id).blacklist = false;
+        sigmaInstance.refresh();
+        this.state.design.deprecate();
         this.state.design.apply();
-        this.relayout()
+        this.relayout();
     }
 
     ownNode(id, name){
-        var session = driver.session()
+        var session = driver.session();
         session.run("MATCH (n {name:{name}}) SET n.owned = 'Not specified' ", {name: name})
 	      .then(function(result){
-	         session.close()
-	      }.bind(this))
-        var sigmaInstance = this.state.sigmaInstance
-        sigmaInstance.graph.nodes(id).owned = true
-        sigmaInstance.refresh()
-        this.state.design.deprecate()
+	         session.close();
+	      }.bind(this));
+        var sigmaInstance = this.state.sigmaInstance;
+        sigmaInstance.graph.nodes(id).owned = true;
+        sigmaInstance.refresh();
+        this.state.design.deprecate();
         this.state.design.apply();
-        this.relayout()
+        this.relayout();
     }
 
     disownNode(id, name){
-        var session = driver.session()
+        var session = driver.session();
         session.run("MATCH (n {name:{name}}) REMOVE n.owned, n.wave", {name: name})
 	      .then(function(result){
-	         session.close()
-	      }.bind(this))
-        var sigmaInstance = this.state.sigmaInstance
-        sigmaInstance.graph.nodes(id).owned = false
-        sigmaInstance.refresh()
-        this.state.design.deprecate()
+	         session.close();
+	      }.bind(this));
+        var sigmaInstance = this.state.sigmaInstance;
+        sigmaInstance.graph.nodes(id).owned = false;
+        sigmaInstance.refresh();
+        this.state.design.deprecate();
         this.state.design.apply();
-        this.relayout()
+        this.relayout();
     }
 
     unfoldEdgeNode(id){

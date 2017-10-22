@@ -25,6 +25,8 @@ export default class UserNodeData extends Component {
             unrolledControl: -1,
             transitiveControl: -1,
             driversessions : [],
+            ownedInWave: "None",
+            ownedMethod: "None",
             propertyMap: {ServicePrincipalNames: []}
         };
 
@@ -51,6 +53,8 @@ export default class UserNodeData extends Component {
             firstdegreeControl: -1,
             unrolledControl: -1,
             transitiveControl: -1,
+            ownedInWave: "None",
+            ownedMethod: "None",
             propertyMap: {ServicePrincipalNames: []}
         });
 
@@ -69,6 +73,8 @@ export default class UserNodeData extends Component {
         var s11 = driver.session();
         var s12 = driver.session();
         var s13 = driver.session();
+        var s14 = driver.session();
+        var s15 = driver.session();
 
         var props = driver.session();
         props.run("MATCH (n:User {name:{name}}) RETURN n", {name: payload})
@@ -159,7 +165,23 @@ export default class UserNodeData extends Component {
                 s13.close();
             }.bind(this));
 
-        this.setState({'driversessions': [s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,props]});
+        s14.run("MATCH (n {name:{name}}) RETURN n.wave", {name:payload})
+        		.then(function(result){
+        			if (result.records[0]._fields[0] != null) {
+        				this.setState({'ownedInWave':result.records[0]._fields[0].low});
+      				}
+      				s14.close();
+      			}.bind(this));
+
+        s15.run("MATCH (n {name:{name}}) RETURN n.owned", {name:payload})
+      			.then(function(result){
+      				if (result.records[0]._fields[0] != null) {
+      					this.setState({'ownedMethod':result.records[0]._fields[0]});
+      				}
+      				s15.close();
+      			}.bind(this));
+
+        this.setState({'driversessions': [s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14,s15,props]});
     }
 
     isArray(object){
@@ -423,6 +445,25 @@ export default class UserNodeData extends Component {
                                     ,this.state.label);
                             }.bind(this)}
                         />
+                    </dd>
+                    <br />
+                    <dt>
+                            Owned in Wave
+                    </dt>
+                    <dd>
+                        <NodeALink
+                            ready={this.state.ownedInWave !== -1}
+                            value={this.state.ownedInWave}
+                            click={function(){
+                                emitter.emit('query', "OPTIONAL MATCH (n1:User {wave:{wave}}) WITH collect(distinct n1) as c1 OPTIONAL MATCH (n2:Computer {wave:{wave}}) WITH collect(distinct n2) + c1 as c2 OPTIONAL MATCH (n3:Group {wave:{wave}}) WITH c2, collect(distinct n3) + c2 as c3 UNWIND c2 as n UNWIND c3 as m MATCH (n)-[r]->(m) RETURN n,r,m", {wave:this.state.ownedInWave}
+                                    ,this.state.label)
+                            }.bind(this)} />
+                    </dd>
+                    <dt>
+                            Owned via Method
+                    </dt>
+                    <dd>
+                            {this.state.ownedMethod}
                     </dd>
                 </dl>
             </div>

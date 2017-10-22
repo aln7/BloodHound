@@ -3,6 +3,7 @@ install:
   # Get the latest stable version of Node.js or io.js
   - ps: Install-Product node $env:nodejs_version
   # install modules
+  - npm install -g npm@5.2
   - npm install
   - npm install -g electron-packager
 
@@ -24,7 +25,7 @@ artifacts:
 deploy:
   - provider: GitHub
     release: BloodHound Rolling
-    description: 'Rolling release of BloodHound compiled from source ($(APPVEYOR_REPO_COMMIT)). Not necessarily stable'
+    description: 'Rolling release of BloodHound compiled from source ($(APPVEYOR_REPO_COMMIT)). Not necessarily stable. Automatically kept up to date with master, so ignore the commits since tag'
     artifact: BloodHound-win32-ia32,BloodHound-win32-x64
     force_update: true
     auth_token:

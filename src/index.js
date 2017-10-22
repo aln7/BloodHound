@@ -106,11 +106,12 @@ global.appStore = {
             'ForceChangePassword': 'tapered',
             'GenericAll': 'tapered',
             'GenericWrite': 'tapered',
-            'WriteDACL': 'tapered',
+            'WriteDacl': 'tapered',
             'WriteOwner': 'tapered',
             'AddMembers': 'tapered',
+            'TrustedBy': 'curvedArrow',
             'SharesPasswordWith': 'tapered',
-            'TrustedBy': 'curvedArrow'
+            'DCSync' : 'tapered'
         }
     },
     lowResPalette: {

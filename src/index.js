@@ -111,7 +111,19 @@ global.appStore = {
             'AddMembers': 'tapered',
             'TrustedBy': 'curvedArrow',
             'SharesPasswordWith': 'tapered',
-            'DCSync' : 'tapered'
+            'DCSync' : 'tapered',
+            'Connected_22' : 'tapered',
+            'Connected_80' : 'tapered',
+            'Connected_135' : 'tapered',
+            'Connected_139' : 'tapered',
+            'Connected_389' : 'tapered',
+            'Connected_443' : 'tapered',
+            'Connected_445' : 'tapered',
+            'Connected_1433' : 'tapered',
+            'Connected_1521' : 'tapered',
+            'Connected_3306' : 'tapered',
+            'Connected_3389' : 'tapered',
+            'Connected_5432' : 'tapered'
         }
     },
     lowResPalette: {
@@ -133,7 +145,19 @@ global.appStore = {
             'WriteOwner': 'line',
             'AddMembers': 'line',
             'SharesPasswordWith': 'line',
-            'TrustedBy': 'curvedArrow'
+            'TrustedBy': 'curvedArrow',
+            'Connected_22' : 'line',
+            'Connected_80' : 'line',
+            'Connected_135' : 'line',
+            'Connected_139' : 'line',
+            'Connected_389' : 'line',
+            'Connected_443' : 'line',
+            'Connected_445' : 'line',
+            'Connected_1433' : 'line',
+            'Connected_1521' : 'line',
+            'Connected_3306' : 'line',
+            'Connected_3389' : 'line',
+            'Connected_5432' : 'line'
         }
     },
     highResStyle: {
